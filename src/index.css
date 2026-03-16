@@ -1,0 +1,134 @@
+:root {
+  /* Corporate Colors - Yee Lee Theme (Red & Black) */
+  --yl-primary: #E31D2B;
+  /* Corporate Red */
+  --yl-primary-hover: #C81E29;
+  --yl-primary-light: #FEE2E2;
+
+  --yl-secondary: #000000;
+  /* Corporate Black */
+  --yl-secondary-hover: #333333;
+
+  --yl-bg: #F8FAFC;
+  /* App Background */
+  --yl-surface: #FFFFFF;
+  /* Card/Surface */
+
+  --yl-text-main: #1E293B;
+  --yl-text-muted: #64748B;
+
+  --yl-border: #E2E8F0;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-glow: 0 0 15px rgba(227, 29, 43, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--yl-bg);
+  color: var(--yl-text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(227, 29, 43, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(227, 29, 43, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(227, 29, 43, 0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Utility Classes */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  background-color: var(--yl-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--yl-primary-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+  background-color: var(--yl-secondary);
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: var(--yl-secondary-hover);
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--yl-border);
+  background-color: white;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  color: var(--yl-text-main);
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: var(--yl-primary);
+  box-shadow: 0 0 0 3px var(--yl-primary-light);
+}
+
+.card {
+  background-color: var(--yl-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--yl-border);
+}
