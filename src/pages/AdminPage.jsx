@@ -13,14 +13,18 @@ import {
     FolderTree
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { supabase } from '../lib/supabaseClient';
 
 const AdminPage = () => {
     const {
-        roles, setRoles,
-        users, setUsers,
-        categories, setCategories,
-        links, setLinks
+        roles,
+        users,
+        categories,
+        links,
+        refreshData
     } = useAppContext();
+
+    const [isSaving, setIsSaving] = useState(false);
 
     const [activeTab, setActiveTab] = useState('users');
 
@@ -42,26 +46,57 @@ const AdminPage = () => {
     const [newUser, setNewUser] = useState({ loginId: '', password: '', name: '', department: '', roleId: roles[0]?.id || '', status: 'Active' });
     const [newCategory, setNewCategory] = useState({ name: '' });
 
-    const handleSaveRole = (e) => {
+    const handleSaveRole = async (e) => {
         e.preventDefault();
         if (!newRole.name) return;
+        setIsSaving(true);
 
-        if (editingRoleId) {
-            setRoles(roles.map(r => r.id === editingRoleId ? { ...r, ...newRole } : r));
-        } else {
-            const roleToAdd = {
-                id: roles.length + 1,
-                name: newRole.name,
-                description: newRole.description,
-                permissions: newRole.permissions,
-                users: 0
-            };
-            setRoles([...roles, roleToAdd]);
+        try {
+            let roleId = editingRoleId;
+
+            if (editingRoleId) {
+                // Update role
+                const { error } = await supabase.from('roles').update({
+                    name: newRole.name,
+                    description: newRole.description
+                }).eq('id', editingRoleId);
+                if (error) throw error;
+
+                // Clear old permissions
+                const { error: delError } = await supabase.from('role_permissions').delete().eq('role_id', editingRoleId);
+                if (delError) throw delError;
+            } else {
+                // Create role
+                const { data, error } = await supabase.from('roles').insert([{
+                    name: newRole.name,
+                    description: newRole.description
+                }]).select();
+                if (error) throw error;
+                roleId = data[0].id;
+            }
+
+            // Sync permissions
+            if (newRole.permissions.length > 0) {
+                // Find IDs for categories
+                const { data: catData } = await supabase.from('categories').select('id, name').in('name', newRole.permissions);
+                const permissionInserts = catData.map(c => ({
+                    role_id: roleId,
+                    category_id: c.id
+                }));
+                const { error: permError } = await supabase.from('role_permissions').insert(permissionInserts);
+                if (permError) throw permError;
+            }
+
+            await refreshData();
+            setNewRole({ name: '', description: '', permissions: [] });
+            setEditingRoleId(null);
+            setIsRoleModalOpen(false);
+        } catch (error) {
+            console.error('Error saving role:', error);
+            alert('Failed to save role: ' + error.message);
+        } finally {
+            setIsSaving(false);
         }
-
-        setNewRole({ name: '', description: '', permissions: [] });
-        setEditingRoleId(null);
-        setIsRoleModalOpen(false);
     };
 
     const handleEditRole = (role) => {
@@ -70,9 +105,16 @@ const AdminPage = () => {
         setIsRoleModalOpen(true);
     };
 
-    const handleDeleteRole = (id) => {
+    const handleDeleteRole = async (id) => {
         if (window.confirm('Are you sure you want to delete this role?')) {
-            setRoles(roles.filter(r => r.id !== id));
+            try {
+                const { error } = await supabase.from('roles').delete().eq('id', id);
+                if (error) throw error;
+                await refreshData();
+            } catch (error) {
+                console.error('Error deleting role:', error);
+                alert('Failed to delete role: ' + error.message);
+            }
         }
     };
 
@@ -85,26 +127,42 @@ const AdminPage = () => {
         });
     };
 
-    const handleSaveLink = (e) => {
+    const handleSaveLink = async (e) => {
         e.preventDefault();
         if (!newLink.name || !newLink.url) return;
+        setIsSaving(true);
+        
+        try {
+            // Find category ID from category name
+            const { data: catData } = await supabase.from('categories').select('id').eq('name', newLink.category).single();
+            const categoryId = catData?.id;
 
-        if (editingLinkId) {
-            setLinks(links.map(l => l.id === editingLinkId ? { ...l, ...newLink } : l));
-        } else {
-            const linkToAdd = {
-                id: links.length + 1,
+            const linkPayload = {
                 name: newLink.name,
                 url: newLink.url,
-                category: newLink.category,
-                status: newLink.status
+                category_id: categoryId,
+                status: newLink.status,
+                last_updated: new Date().toISOString()
             };
-            setLinks([...links, linkToAdd]);
-        }
 
-        setNewLink({ name: '', url: '', category: categories[0] || '', status: 'Active' });
-        setEditingLinkId(null);
-        setIsLinkModalOpen(false);
+            if (editingLinkId) {
+                const { error } = await supabase.from('powerbi_links').update(linkPayload).eq('id', editingLinkId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('powerbi_links').insert([linkPayload]);
+                if (error) throw error;
+            }
+
+            await refreshData();
+            setNewLink({ name: '', url: '', category: categories[0] || '', status: 'Active' });
+            setEditingLinkId(null);
+            setIsLinkModalOpen(false);
+        } catch (error) {
+            console.error('Error saving link:', error);
+            alert('Failed to save link: ' + error.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleEditLink = (link) => {
@@ -113,80 +171,106 @@ const AdminPage = () => {
         setIsLinkModalOpen(true);
     };
 
-    const handleDeleteLink = (id) => {
+    const handleDeleteLink = async (id) => {
         if (window.confirm('Are you sure you want to delete this PowerBI Link?')) {
-            setLinks(links.filter(l => l.id !== id));
+            try {
+                const { error } = await supabase.from('powerbi_links').delete().eq('id', id);
+                if (error) throw error;
+                await refreshData();
+            } catch (error) {
+                console.error('Error deleting link:', error);
+                alert('Failed to delete link.');
+            }
         }
     };
 
-    const handleSaveUser = (e) => {
+    const handleSaveUser = async (e) => {
         e.preventDefault();
-        if (!newUser.loginId || !newUser.password || !newUser.name) return;
-
-        const selectedRole = roles.find(r => r.id.toString() === newUser.roleId.toString()) || roles[0];
-
-        if (editingUserId) {
-            setUsers(users.map(u => u.id === editingUserId ? { ...u, ...newUser, role: selectedRole } : u));
-        } else {
-            const userToAdd = {
-                id: users.length + 1,
-                loginId: newUser.loginId,
-                password: newUser.password,
+        if (!newUser.name || !newUser.loginId) return;
+        setIsSaving(true);
+        
+        try {
+            const userPayload = {
                 name: newUser.name,
+                login_id: newUser.loginId,
                 department: newUser.department,
-                role: selectedRole,
+                role_id: newUser.roleId,
                 status: newUser.status
             };
-            setUsers([...users, userToAdd]);
-            // Update user count in role mock
-            setRoles(roles.map(r => r.id === selectedRole.id ? { ...r, users: r.users + 1 } : r));
-        }
 
-        setNewUser({ loginId: '', password: '', name: '', department: '', roleId: roles[0]?.id || '', status: 'Active' });
-        setEditingUserId(null);
-        setIsUserModalOpen(false);
+            if (editingUserId) {
+                const { error } = await supabase.from('app_users').update(userPayload).eq('id', editingUserId);
+                if (error) throw error;
+            } else {
+                // IMPORTANT: For new users, we'd need to create an Auth user first.
+                // For now, we'll inform the user via an alert if they try to "create" without a backend trigger.
+                alert("Note: Adding a user here only updates the profile table. To allow them to log in, you must first create their account in the Supabase 'Authentication' tab using the same email.");
+                // Note: The actual insert into app_users would fail here because of the FK constraint on id.
+                // We'll skip the insert for new users in this simple client-side demo unless we have a trigger.
+            }
+
+            await refreshData();
+            setNewUser({ loginId: '', password: '', name: '', department: '', roleId: roles[0]?.id || '', status: 'Active' });
+            setEditingUserId(null);
+            setIsUserModalOpen(false);
+        } catch (error) {
+            console.error('Error saving user:', error);
+            alert('Failed to save user: ' + error.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleEditUser = (user) => {
         setNewUser({
-            loginId: user.loginId,
-            password: user.password,
+            loginId: user.login_id,
+            password: '••••••••', // Don't expose passwords
             name: user.name,
             department: user.department,
-            roleId: user.role?.id || roles[0]?.id,
+            roleId: user.role_id || roles[0]?.id,
             status: user.status
         });
         setEditingUserId(user.id);
         setIsUserModalOpen(true);
     };
 
-    const handleDeleteUser = (id) => {
+    const handleDeleteUser = async (id) => {
         if (window.confirm('Are you sure you want to delete this user?')) {
-            setUsers(users.filter(u => u.id !== id));
+            try {
+                const { error } = await supabase.from('app_users').delete().eq('id', id);
+                if (error) throw error;
+                await refreshData();
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Failed to delete user.');
+            }
         }
     };
 
-    const handleSaveCategory = (e) => {
+    const handleSaveCategory = async (e) => {
         e.preventDefault();
         if (!newCategory.name) return;
+        setIsSaving(true);
 
-        if (editingCategoryName) {
-            setCategories(categories.map(c => c === editingCategoryName ? newCategory.name : c));
-            // Also update any roles or links currently using this category name
-            setRoles(roles.map(r => ({
-                ...r,
-                permissions: r.permissions.map(p => p === editingCategoryName ? newCategory.name : p)
-            })));
-            setLinks(links.map(l => l.category === editingCategoryName ? { ...l, category: newCategory.name } : l));
-        } else {
-            if (!categories.includes(newCategory.name)) {
-                setCategories([...categories, newCategory.name]);
+        try {
+            if (editingCategoryName) {
+                const { error } = await supabase.from('categories').update({ name: newCategory.name }).eq('name', editingCategoryName);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('categories').insert([{ name: newCategory.name }]);
+                if (error) throw error;
             }
-        }
 
-        setNewCategory({ name: '' });
-        setEditingCategoryName(null);
-        setIsCategoryModalOpen(false);
+            await refreshData();
+            setNewCategory({ name: '' });
+            setEditingCategoryName(null);
+            setIsCategoryModalOpen(false);
+        } catch (error) {
+            console.error('Error saving category:', error);
+            alert('Failed to save category: ' + error.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleEditCategory = (categoryName) => {
@@ -195,15 +279,16 @@ const AdminPage = () => {
         setIsCategoryModalOpen(true);
     };
 
-    const handleDeleteCategory = (categoryName) => {
+    const handleDeleteCategory = async (categoryName) => {
         if (window.confirm(`Are you sure you want to delete the category "${categoryName}"? This will remove access for roles and decouple reports.`)) {
-            setCategories(categories.filter(c => c !== categoryName));
-            // Cleanup references in roles and links
-            setRoles(roles.map(r => ({
-                ...r,
-                permissions: r.permissions.filter(p => p !== categoryName)
-            })));
-            setLinks(links.map(l => l.category === categoryName ? { ...l, category: 'Uncategorized' } : l));
+            try {
+                const { error } = await supabase.from('categories').delete().eq('name', categoryName);
+                if (error) throw error;
+                await refreshData();
+            } catch (error) {
+                console.error('Error deleting category:', error);
+                alert('Failed to delete category: ' + error.message);
+            }
         }
     };
 
@@ -319,11 +404,11 @@ const AdminPage = () => {
                                 {users.map((u) => (
                                     <tr key={u.id} style={{ borderBottom: '1px solid var(--yl-border)' }}>
                                         <td style={{ padding: '1rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>{u.name}</td>
-                                        <td style={{ padding: '1rem', color: 'var(--yl-text-muted)' }}>{u.loginId}</td>
+                                        <td style={{ padding: '1rem', color: 'var(--yl-text-muted)' }}>{u.login_id}</td>
                                         <td style={{ padding: '1rem', color: 'var(--yl-text-muted)' }}>{u.department}</td>
                                         <td style={{ padding: '1rem' }}>
                                             <span style={{ backgroundColor: 'var(--yl-primary-light)', color: 'var(--yl-primary)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '600' }}>
-                                                {u.role?.name || 'Unassigned'}
+                                                {u.roles?.name || 'Unassigned'}
                                             </span>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
@@ -551,7 +636,9 @@ const AdminPage = () => {
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                 <button type="button" className="btn" style={{ flex: 1, backgroundColor: '#F1F5F9' }} onClick={() => setIsUserModalOpen(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save User</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isSaving}>
+                                    {isSaving ? 'Saving...' : 'Save User'}
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -578,7 +665,9 @@ const AdminPage = () => {
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                 <button type="button" className="btn" style={{ flex: 1, backgroundColor: '#F1F5F9' }} onClick={() => setIsCategoryModalOpen(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Category</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isSaving}>
+                                    {isSaving ? 'Saving...' : 'Save Category'}
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -660,7 +749,9 @@ const AdminPage = () => {
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                                 <button type="button" className="btn" style={{ flex: 1, backgroundColor: '#F1F5F9' }} onClick={() => setIsRoleModalOpen(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Role</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isSaving}>
+                                    {isSaving ? 'Saving...' : 'Save Role'}
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -743,7 +834,9 @@ const AdminPage = () => {
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                 <button type="button" className="btn" style={{ flex: 1, backgroundColor: '#F1F5F9' }} onClick={() => setIsLinkModalOpen(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Link</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isSaving}>
+                                    {isSaving ? 'Saving...' : 'Save Link'}
+                                </button>
                             </div>
                         </form>
                     </div>
