@@ -1,39 +1,69 @@
-import React, { createContext, useContext, useState } from 'react';
-
-// Default mock roles with categorized permissions
-export const MOCK_ROLES = [
-    { id: 1, name: 'Executive Management', users: 12, description: 'Full access to all regional reports and financial overviews.', permissions: ['Finance', 'Sales', 'HR', 'Operations', 'Executive'] },
-    { id: 2, name: 'Regional Director', users: 8, description: 'Access to specific region sales and performance metrics.', permissions: ['Sales', 'Operations'] },
-    { id: 3, name: 'Sales Manager', users: 45, description: 'Access to branch level reporting and team performance.', permissions: ['Sales', 'HR'] },
-    { id: 4, name: 'Account Executive', users: 435, description: 'Basic access to personal sales targets and territory reports.', permissions: ['Sales'] },
-];
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 const AppContext = createContext();
 
-export const MOCK_CATEGORIES = ['Finance', 'Sales', 'HR', 'Operations', 'Executive'];
-
-export const MOCK_USERS = [
-    { id: 1, loginId: 'admin', password: 'password123', name: 'Admin User', department: 'IT Department', role: MOCK_ROLES[0], status: 'Active' },
-    { id: 2, loginId: 'jdoe', password: 'password123', name: 'John Doe', department: 'Sales', role: MOCK_ROLES[2], status: 'Active' },
-];
-
-export const MOCK_LINKS = [
-    { id: 1, name: 'Q3 Financial Summary', url: 'https://playground.powerbi.com/sampleReportEmbed', category: 'Finance', lastUpdated: '2 hours ago', views: 124, status: 'Active' },
-    { id: 2, name: 'Regional Monthly Sales', url: 'https://playground.powerbi.com/sampleReportEmbed', category: 'Sales', lastUpdated: '1 hour ago', views: 890, status: 'Active' },
-    { id: 3, name: 'Executive Branch KPI', url: 'https://playground.powerbi.com/sampleReportEmbed', category: 'Executive', lastUpdated: '1 day ago', views: 42, status: 'Active' },
-    { id: 4, name: 'Headcount & Onboarding', url: 'https://playground.powerbi.com/sampleReportEmbed', category: 'HR', lastUpdated: '3 days ago', views: 15, status: 'Active' },
-    { id: 5, name: 'Warehouse Inventory Levels', url: 'https://playground.powerbi.com/sampleReportEmbed', category: 'Operations', lastUpdated: '5 hours ago', views: 304, status: 'Draft' },
-    { id: 6, name: 'YTD Profit Margins', url: 'https://playground.powerbi.com/sampleReportEmbed', category: 'Finance', lastUpdated: '10 hours ago', views: 89, status: 'Active' },
-    { id: 7, name: 'Sales Rep Performance', url: 'https://playground.powerbi.com/sampleReportEmbed', category: 'Sales', lastUpdated: '2 days ago', views: 450, status: 'Active' },
-    { id: 8, name: 'Logistics Supply Chain', url: 'https://playground.powerbi.com/sampleReportEmbed', category: 'Operations', lastUpdated: '1 week ago', views: 120, status: 'Draft' },
-];
-
 export const AppProvider = ({ children }) => {
-    const [roles, setRoles] = useState(MOCK_ROLES);
-    const [categories, setCategories] = useState(MOCK_CATEGORIES);
-    const [users, setUsers] = useState(MOCK_USERS);
-    const [links, setLinks] = useState(MOCK_LINKS);
-    const [currentUser, setCurrentUser] = useState(users[0]);
+    const [roles, setRoles] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [links, setLinks] = useState([]);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // Fetch categories
+            const { data: catData } = await supabase.from('categories').select('*');
+            setCategories(catData?.map(c => c.name) || []);
+
+            // Fetch roles and their permissions
+            const { data: rolesData } = await supabase.from('roles').select(`
+                *,
+                role_permissions (
+                    categories (name)
+                )
+            `);
+            const formattedRoles = rolesData?.map(r => ({
+                ...r,
+                permissions: r.role_permissions.map(p => p.categories.name)
+            })) || [];
+            setRoles(formattedRoles);
+
+            // Fetch links
+            const { data: linksData } = await supabase.from('powerbi_links').select(`
+                *,
+                categories (name)
+            `);
+            const formattedLinks = linksData?.map(l => ({
+                ...l,
+                category: l.categories?.name,
+                // Map DB names to expected UI names if necessary
+            })) || [];
+            setLinks(formattedLinks);
+
+            // Fetch users
+            const { data: usersData } = await supabase.from('app_users').select(`
+                *,
+                roles (*)
+            `);
+            setUsers(usersData || []);
+            
+            // Set default admin if no current user (for dev/init)
+            if (usersData && usersData.length > 0) {
+                setCurrentUser(usersData[0]);
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
 
     return (
         <AppContext.Provider value={{
@@ -41,7 +71,8 @@ export const AppProvider = ({ children }) => {
             roles, setRoles,
             categories, setCategories,
             users, setUsers,
-            links, setLinks
+            links, setLinks,
+            loading, refreshData: fetchData
         }}>
             {children}
         </AppContext.Provider>

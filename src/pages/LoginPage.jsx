@@ -3,23 +3,45 @@ import { useNavigate } from 'react-router-dom';
 import { Leaf, Lock, User, ChevronRight } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
+import { supabase } from '../lib/supabaseClient';
+
 const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-    const { users, setCurrentUser } = useAppContext();
+    const { setCurrentUser } = useAppContext();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate network delay
-        setTimeout(() => {
-            setIsLoading(false);
-            const user = users.find(u => u.loginId.toLowerCase() === email.toLowerCase()) || users[0];
-            setCurrentUser(user);
+        setError(null);
+        
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) throw error;
+
+            // Fetch the corresponding app_user profile
+            const { data: profile, error: profileError } = await supabase
+                .from('app_users')
+                .select('*, roles(*)')
+                .eq('id', data.user.id)
+                .single();
+
+            if (profileError) throw profileError;
+
+            setCurrentUser(profile);
             navigate('/reports');
-        }, 1200);
+        } catch (err) {
+            setError(err.message || 'Failed to sign in. Please check your credentials.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -93,9 +115,22 @@ const LoginPage = () => {
                 </div>
 
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {error && (
+                        <div style={{
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            backgroundColor: '#fee2e2',
+                            color: '#b91c1c',
+                            fontSize: '0.875rem',
+                            border: '1px solid #fecaca',
+                            textAlign: 'center'
+                        }}>
+                            {error}
+                        </div>
+                    )}
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
-                            Employee ID or Email
+                            Email Address
                         </label>
                         <div style={{ position: 'relative' }}>
                             <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--yl-text-muted)' }}>
