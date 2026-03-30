@@ -9,7 +9,8 @@ const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isResetMode, setIsResetMode] = useState(false);
+    const [resetSuccess, setResetSuccess] = useState(false);
     const navigate = useNavigate();
     const { setCurrentUser } = useAppContext();
 
@@ -39,6 +40,25 @@ const LoginPage = () => {
             navigate('/reports');
         } catch (err) {
             setError(err.message || 'Failed to sign in. Please check your credentials.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleResetPassword = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+        setResetSuccess(false);
+
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/login`,
+            });
+            if (error) throw error;
+            setResetSuccess(true);
+        } catch (err) {
+            setError(err.message || 'Failed to send reset link.');
         } finally {
             setIsLoading(false);
         }
@@ -108,13 +128,13 @@ const LoginPage = () => {
                         fontWeight: '700',
                         color: 'var(--yl-text-main)',
                         marginBottom: '0.5rem'
-                    }}>Yee Lee Portal</h1>
+                    }}>{isResetMode ? 'Reset Password' : 'Yee Lee Portal'}</h1>
                     <p style={{ color: 'var(--yl-text-muted)', fontSize: '0.95rem' }}>
-                        Enterprise Business Intelligence Reporting
+                        {isResetMode ? 'Enter your email to receive a reset link' : 'Enterprise Business Intelligence Reporting'}
                     </p>
                 </div>
 
-                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <form onSubmit={isResetMode ? handleResetPassword : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {error && (
                         <div style={{
                             padding: '0.75rem',
@@ -128,6 +148,19 @@ const LoginPage = () => {
                             {error}
                         </div>
                     )}
+                    {resetSuccess && (
+                        <div style={{
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            backgroundColor: '#dcfce7',
+                            color: '#166534',
+                            fontSize: '0.875rem',
+                            border: '1px solid #bbf7d0',
+                            textAlign: 'center'
+                        }}>
+                            Reset link sent! Please check your inbox.
+                        </div>
+                    )}
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
                             Email Address
@@ -137,9 +170,9 @@ const LoginPage = () => {
                                 <User size={18} />
                             </div>
                             <input
-                                type="text"
+                                type="email"
                                 className="input-field"
-                                placeholder="Enter your credentials"
+                                placeholder="Enter your email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
@@ -148,26 +181,34 @@ const LoginPage = () => {
                         </div>
                     </div>
 
-                    <div>
-                        <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
-                            <span>Password</span>
-                            <a href="#" style={{ color: 'var(--yl-primary)', textDecoration: 'none', fontWeight: '600' }}>Forgot?</a>
-                        </label>
-                        <div style={{ position: 'relative' }}>
-                            <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--yl-text-muted)' }}>
-                                <Lock size={18} />
+                    {!isResetMode && (
+                        <div>
+                            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
+                                <span>Password</span>
+                                <button
+                                    type="button"
+                                    onClick={() => { setError(null); setIsResetMode(true); }}
+                                    style={{ background: 'none', border: 'none', color: 'var(--yl-primary)', cursor: 'pointer', fontWeight: '600', padding: 0 }}
+                                >
+                                    Forgot?
+                                </button>
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                                <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--yl-text-muted)' }}>
+                                    <Lock size={18} />
+                                </div>
+                                <input
+                                    type="password"
+                                    className="input-field"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required={!isResetMode}
+                                    style={{ paddingLeft: '2.75rem' }}
+                                />
                             </div>
-                            <input
-                                type="password"
-                                className="input-field"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                style={{ paddingLeft: '2.75rem' }}
-                            />
                         </div>
-                    </div>
+                    )}
 
                     <button
                         type="submit"
@@ -191,14 +232,24 @@ const LoginPage = () => {
                                     borderRadius: '50%',
                                     animation: 'spin 1s linear infinite'
                                 }} />
-                                Authenticating...
+                                Processing...
                             </span>
                         ) : (
                             <>
-                                Sign In <ChevronRight size={18} />
+                                {isResetMode ? 'Send Reset Link' : 'Sign In'} <ChevronRight size={18} />
                             </>
                         )}
                     </button>
+
+                    {isResetMode && (
+                        <button
+                            type="button"
+                            onClick={() => { setError(null); setIsResetMode(false); }}
+                            style={{ background: 'none', border: 'none', color: 'var(--yl-text-muted)', cursor: 'pointer', fontSize: '0.875rem' }}
+                        >
+                            &larr; Back to Login
+                        </button>
+                    )}
                 </form>
 
                 <div style={{ marginTop: '2.5rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--yl-text-muted)' }}>
