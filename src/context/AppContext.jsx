@@ -14,6 +14,20 @@ export const AppProvider = ({ children }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
+            // Check active session first
+            const { data: { session } } = await supabase.auth.getSession();
+            let loggedInUser = null;
+
+            if (session?.user) {
+                const { data: profile } = await supabase
+                    .from('app_users')
+                    .select('*, roles(*)')
+                    .eq('id', session.user.id)
+                    .single();
+                loggedInUser = profile;
+                setCurrentUser(profile);
+            }
+
             // Fetch categories
             const { data: catData } = await supabase.from('categories').select('*');
             setCategories(catData?.map(c => c.name) || []);
@@ -27,7 +41,7 @@ export const AppProvider = ({ children }) => {
             `);
             const formattedRoles = rolesData?.map(r => ({
                 ...r,
-                permissions: r.role_permissions.map(p => p.categories.name)
+                permissions: r.role_permissions?.map(p => p.categories?.name).filter(Boolean) || []
             })) || [];
             setRoles(formattedRoles);
 
@@ -38,21 +52,17 @@ export const AppProvider = ({ children }) => {
             `);
             const formattedLinks = linksData?.map(l => ({
                 ...l,
-                category: l.categories?.name,
-                // Map DB names to expected UI names if necessary
+                category: l.categories?.name || 'Uncategorized'
             })) || [];
             setLinks(formattedLinks);
 
-            // Fetch users
-            const { data: usersData } = await supabase.from('app_users').select(`
-                *,
-                roles (*)
-            `);
-            setUsers(usersData || []);
-            
-            // Set default admin if no current user (for dev/init)
-            if (usersData && usersData.length > 0) {
-                setCurrentUser(usersData[0]);
+            // Fetch all users list (if logged in as admin)
+            if (loggedInUser) {
+                const { data: usersData } = await supabase.from('app_users').select(`
+                    *,
+                    roles (*)
+                `);
+                setUsers(usersData || []);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -63,6 +73,17 @@ export const AppProvider = ({ children }) => {
 
     useEffect(() => {
         fetchData();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (!session) {
+                setCurrentUser(null);
+            } else if (!currentUser) {
+                fetchData(); // Re-fetch if session appears but profile is missing
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     return (

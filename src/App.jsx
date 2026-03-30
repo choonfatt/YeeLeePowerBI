@@ -7,7 +7,16 @@ import ReportsPage from './pages/ReportsPage';
 import AdminPage from './pages/AdminPage';
 
 const AuthGuard = ({ children }) => {
-  const { currentUser } = useAppContext();
+  const { currentUser, loading } = useAppContext();
+  
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--yl-text-muted)' }}>
+        Loading Yee Lee Portal...
+      </div>
+    );
+  }
+
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
