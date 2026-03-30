@@ -9,8 +9,11 @@ const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
+    const [isResetMode, setIsResetMode] = useState(false);
+    const [resetSuccess, setResetSuccess] = useState(false);
     const [isChangePasswordMode, setIsChangePasswordMode] = useState(false);
     const [newPassword, setNewPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const { setCurrentUser } = useAppContext();
 
