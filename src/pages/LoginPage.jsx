@@ -9,10 +9,17 @@ const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
-    const [isResetMode, setIsResetMode] = useState(false);
-    const [resetSuccess, setResetSuccess] = useState(false);
+    const [isChangePasswordMode, setIsChangePasswordMode] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
     const navigate = useNavigate();
     const { setCurrentUser } = useAppContext();
+
+    useEffect(() => {
+        // Detect recovery mode from URL hash
+        if (window.location.hash.includes('type=recovery')) {
+            setIsChangePasswordMode(true);
+        }
+    }, []);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -59,6 +66,25 @@ const LoginPage = () => {
             setResetSuccess(true);
         } catch (err) {
             setError(err.message || 'Failed to send reset link.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleUpdatePassword = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) throw error;
+            
+            alert('Password updated successfully! Please log in with your new password.');
+            setIsChangePasswordMode(false);
+            window.location.hash = ''; // Clear hash
+        } catch (err) {
+            setError(err.message || 'Failed to update password.');
         } finally {
             setIsLoading(false);
         }
@@ -128,13 +154,13 @@ const LoginPage = () => {
                         fontWeight: '700',
                         color: 'var(--yl-text-main)',
                         marginBottom: '0.5rem'
-                    }}>{isResetMode ? 'Reset Password' : 'Yee Lee Portal'}</h1>
+                    }}>{isChangePasswordMode ? 'Set New Password' : (isResetMode ? 'Reset Password' : 'Yee Lee Portal')}</h1>
                     <p style={{ color: 'var(--yl-text-muted)', fontSize: '0.95rem' }}>
-                        {isResetMode ? 'Enter your email to receive a reset link' : 'Enterprise Business Intelligence Reporting'}
+                        {isChangePasswordMode ? 'Create a strong new password for your account' : (isResetMode ? 'Enter your email to receive a reset link' : 'Enterprise Business Intelligence Reporting')}
                     </p>
                 </div>
 
-                <form onSubmit={isResetMode ? handleResetPassword : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <form onSubmit={isChangePasswordMode ? handleUpdatePassword : (isResetMode ? handleResetPassword : handleLogin)} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {error && (
                         <div style={{
                             padding: '0.75rem',
@@ -148,7 +174,7 @@ const LoginPage = () => {
                             {error}
                         </div>
                     )}
-                    {resetSuccess && (
+                    {resetSuccess && !isChangePasswordMode && (
                         <div style={{
                             padding: '0.75rem',
                             borderRadius: '0.5rem',
@@ -161,37 +187,11 @@ const LoginPage = () => {
                             Reset link sent! Please check your inbox.
                         </div>
                     )}
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
-                            Email Address
-                        </label>
-                        <div style={{ position: 'relative' }}>
-                            <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--yl-text-muted)' }}>
-                                <User size={18} />
-                            </div>
-                            <input
-                                type="email"
-                                className="input-field"
-                                placeholder="Enter your email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                style={{ paddingLeft: '2.75rem' }}
-                            />
-                        </div>
-                    </div>
 
-                    {!isResetMode && (
+                    {isChangePasswordMode ? (
                         <div>
-                            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
-                                <span>Password</span>
-                                <button
-                                    type="button"
-                                    onClick={() => { setError(null); setIsResetMode(true); }}
-                                    style={{ background: 'none', border: 'none', color: 'var(--yl-primary)', cursor: 'pointer', fontWeight: '600', padding: 0 }}
-                                >
-                                    Forgot?
-                                </button>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
+                                New Password
                             </label>
                             <div style={{ position: 'relative' }}>
                                 <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--yl-text-muted)' }}>
@@ -200,14 +200,65 @@ const LoginPage = () => {
                                 <input
                                     type="password"
                                     className="input-field"
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required={!isResetMode}
+                                    placeholder="Enter new password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    required
                                     style={{ paddingLeft: '2.75rem' }}
                                 />
                             </div>
                         </div>
+                    ) : (
+                        <>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
+                                Email Address
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                                <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--yl-text-muted)' }}>
+                                    <User size={18} />
+                                </div>
+                                <input
+                                    type="email"
+                                    className="input-field"
+                                    placeholder="Enter your email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    style={{ paddingLeft: '2.75rem' }}
+                                />
+                            </div>
+                        </div>
+
+                        {!isResetMode && (
+                            <div>
+                                <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
+                                    <span>Password</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setError(null); setIsResetMode(true); }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--yl-primary)', cursor: 'pointer', fontWeight: '600', padding: 0 }}
+                                    >
+                                        Forgot?
+                                    </button>
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--yl-text-muted)' }}>
+                                        <Lock size={18} />
+                                    </div>
+                                    <input
+                                        type="password"
+                                        className="input-field"
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required={!isResetMode}
+                                        style={{ paddingLeft: '2.75rem' }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        </>
                     )}
 
                     <button
@@ -236,15 +287,15 @@ const LoginPage = () => {
                             </span>
                         ) : (
                             <>
-                                {isResetMode ? 'Send Reset Link' : 'Sign In'} <ChevronRight size={18} />
+                                {isChangePasswordMode ? 'Set Password' : (isResetMode ? 'Send Reset Link' : 'Sign In')} <ChevronRight size={18} />
                             </>
                         )}
                     </button>
 
-                    {isResetMode && (
+                    {(isResetMode || isChangePasswordMode) && (
                         <button
                             type="button"
-                            onClick={() => { setError(null); setIsResetMode(false); }}
+                            onClick={() => { setError(null); setIsResetMode(false); setIsChangePasswordMode(false); }}
                             style={{ background: 'none', border: 'none', color: 'var(--yl-text-muted)', cursor: 'pointer', fontSize: '0.875rem' }}
                         >
                             &larr; Back to Login
