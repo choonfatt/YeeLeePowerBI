@@ -202,15 +202,18 @@ const AdminPage = () => {
                 const { error } = await supabase.from('app_users').update(userPayload).eq('id', editingUserId);
                 if (error) throw error;
             } else {
-                // IMPORTANT: For new users, we'd need to create an Auth user first.
-                // For now, we'll inform the user via an alert if they try to "create" without a backend trigger.
-                alert("Note: Adding a user here only updates the profile table. To allow them to log in, you must first create their account in the Supabase 'Authentication' tab using the same email.");
-                // Note: The actual insert into app_users would fail here because of the FK constraint on id.
-                // We'll skip the insert for new users in this simple client-side demo unless we have a trigger.
+                if (!newUser.authId) {
+                    throw new Error("You must provide the Supabase 'Auth User ID' (from the Authentication tab) for new users.");
+                }
+                const { error } = await supabase.from('app_users').insert([{
+                    ...userPayload,
+                    id: newUser.authId
+                }]);
+                if (error) throw error;
             }
 
             await refreshData();
-            setNewUser({ loginId: '', password: '', name: '', department: '', roleId: roles[0]?.id || '', status: 'Active' });
+            setNewUser({ loginId: '', password: '', name: '', department: '', roleId: roles[0]?.id || '', status: 'Active', authId: '' });
             setEditingUserId(null);
             setIsUserModalOpen(false);
         } catch (error) {
@@ -600,6 +603,20 @@ const AdminPage = () => {
                             <button onClick={() => setIsUserModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} color="var(--yl-text-muted)" /></button>
                         </div>
                         <form onSubmit={handleSaveUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {!editingUserId && (
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 'bold', color: 'var(--yl-primary)' }}>Auth User ID (from Supabase)</label>
+                                    <input 
+                                        type="text" 
+                                        className="input-field" 
+                                        placeholder="Paste the UUID from Supabase 'Auth' tab" 
+                                        value={newUser.authId || ''} 
+                                        onChange={e => setNewUser({ ...newUser, authId: e.target.value })} 
+                                        required 
+                                    />
+                                    <span style={{ fontSize: '0.65rem', color: 'var(--yl-text-muted)' }}>First, create the user in the Supabase 'Authentication' tab, then paste their ID here.</span>
+                                </div>
+                            )}
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Login ID / Employee ID</label>
                                 <input type="text" className="input-field" value={newUser.loginId} onChange={e => setNewUser({ ...newUser, loginId: e.target.value })} required />
