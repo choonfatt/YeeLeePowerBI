@@ -618,8 +618,8 @@ const AdminPage = () => {
                                 </div>
                             )}
                             <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Login ID / Employee ID</label>
-                                <input type="text" className="input-field" value={newUser.loginId} onChange={e => setNewUser({ ...newUser, loginId: e.target.value })} required />
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Login ID (e.g. admin)</label>
+                                <input type="text" className="input-field" placeholder="e.g. admin" value={newUser.loginId} onChange={e => setNewUser({ ...newUser, loginId: e.target.value })} required />
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Temporary Password</label>

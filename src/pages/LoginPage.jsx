@@ -29,9 +29,12 @@ const LoginPage = () => {
         setIsLoading(true);
         setError(null);
         
+        // Map Login ID to a virtual email domain
+        const loginEmail = email.includes('@') ? email : `${email}@yeelee.portal`;
+
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
-                email,
+                email: loginEmail,
                 password,
             });
 
@@ -61,8 +64,10 @@ const LoginPage = () => {
         setError(null);
         setResetSuccess(false);
 
+        const loginEmail = email.includes('@') ? email : `${email}@yeelee.portal`;
+
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            const { error } = await supabase.auth.resetPasswordForEmail(loginEmail, {
                 redirectTo: `${window.location.origin}/login`,
             });
             if (error) throw error;
@@ -215,16 +220,16 @@ const LoginPage = () => {
                         <>
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'var(--yl-text-main)' }}>
-                                Email Address
+                                Login ID
                             </label>
                             <div style={{ position: 'relative' }}>
                                 <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--yl-text-muted)' }}>
                                     <User size={18} />
                                 </div>
                                 <input
-                                    type="email"
+                                    type="text"
                                     className="input-field"
-                                    placeholder="Enter your email"
+                                    placeholder="Enter your login ID"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
