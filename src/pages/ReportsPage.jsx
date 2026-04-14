@@ -21,24 +21,34 @@ const ReportsPage = () => {
     const [selectedReport, setSelectedReport] = useState(null);
 
     // Role Based Access Control
-    const userPermissions = currentUser.role?.permissions || [];
-
-    // Filter out categories user doesn't have access to for the pills
+    const isAdmin = currentUser?.role?.name?.toLowerCase() === 'administrator';
+    const userPermissions = currentUser?.role?.permissions || [];
+    
+    // Filter out categories user doesn't have access to
+    // ALSO: Permanent filter to hide anything containing "[Test View]"
     const allCategoriesWithAll = ['All', ...categories];
-    const availableCategories = allCategoriesWithAll.filter(cat =>
-        cat === 'All' || userPermissions.includes(cat)
-    );
+    const availableCategories = allCategoriesWithAll.filter(cat => {
+        if (cat.toLowerCase().includes('[test view]')) return false; // Hide test views for everyone
+        return cat === 'All' || isAdmin || userPermissions.includes(cat);
+    });
 
-    // If active category was removed by role switch, reset to All
+    // If active category was removed by role switch or test-filter, reset to All
     if (!availableCategories.includes(activeCategory)) {
         setActiveCategory('All');
     }
 
     const filteredReports = links.filter(report => {
-        const hasPermission = userPermissions.includes(report.category);
+        // 1. Hide test reports permanently (case-insensitive)
+        const isTestReport = report.category?.toLowerCase().includes('[test view]') || 
+                             report.name?.toLowerCase().includes('[test view]');
+        if (isTestReport) return false;
+
+        // 2. RBAC: Admins see all non-test reports, others follow permissions
+        const hasPermission = isAdmin || userPermissions.includes(report.category);
         const matchesCategory = activeCategory === 'All' || report.category === activeCategory;
         const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'All' || report.status === statusFilter;
+        
         return hasPermission && matchesCategory && matchesSearch && matchesStatus;
     });
 

@@ -14,25 +14,11 @@ export const AppProvider = ({ children }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Check active session first
-            const { data: { session } } = await supabase.auth.getSession();
-            let loggedInUser = null;
-
-            if (session?.user) {
-                const { data: profile } = await supabase
-                    .from('app_users')
-                    .select('*, roles(*)')
-                    .eq('id', session.user.id)
-                    .single();
-                loggedInUser = profile;
-                setCurrentUser(profile);
-            }
-
-            // Fetch categories
+            // 1. Fetch Categories
             const { data: catData } = await supabase.from('categories').select('*');
             setCategories(catData?.map(c => c.name) || []);
 
-            // Fetch roles and their permissions
+            // 2. Fetch Roles and their permissions
             const { data: rolesData } = await supabase.from('roles').select(`
                 *,
                 role_permissions (
@@ -44,6 +30,28 @@ export const AppProvider = ({ children }) => {
                 permissions: r.role_permissions?.map(p => p.categories?.name).filter(Boolean) || []
             })) || [];
             setRoles(formattedRoles);
+
+            // 3. Check active session and augment profile
+            const { data: { session } } = await supabase.auth.getSession();
+            let loggedInUser = null;
+
+            if (session?.user) {
+                const { data: profile } = await supabase
+                    .from('app_users')
+                    .select('*, roles(*)')
+                    .eq('id', session.user.id)
+                    .single();
+                
+                if (profile) {
+                    // Find the role with permissions in our formatted list
+                    const roleWithPermissions = formattedRoles.find(r => r.id === profile.role_id);
+                    loggedInUser = {
+                        ...profile,
+                        role: roleWithPermissions || profile.roles // Fallback to basic role info
+                    };
+                    setCurrentUser(loggedInUser);
+                }
+            }
 
             // Fetch links
             const { data: linksData } = await supabase.from('powerbi_links').select(`

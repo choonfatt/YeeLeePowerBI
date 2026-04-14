@@ -50,28 +50,6 @@ const Topbar = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
 
-                {/* Environment testing dropdown for spoofing roles */}
-                <select
-                    onChange={handleRoleChange}
-                    value={currentUser.role?.name || ''}
-                    style={{
-                        padding: '0.5rem 1rem',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px dashed var(--yl-primary)',
-                        backgroundColor: 'var(--yl-primary-light)',
-                        color: 'var(--yl-primary)',
-                        fontWeight: '600',
-                        fontSize: '0.85rem',
-                        outline: 'none',
-                        cursor: 'pointer'
-                    }}
-                    title="Change your active role to test permissions"
-                >
-                    {roles.map(r => (
-                        <option key={r.id} value={r.name}>[Test View] {r.name}</option>
-                    ))}
-                </select>
-
                 <button style={{
                     background: 'none',
                     border: 'none',

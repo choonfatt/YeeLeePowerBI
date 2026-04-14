@@ -1,0 +1,234 @@
+:root {
+  --uk-primary: #002B5B;
+  --uk-primary-dark: #001C3D;
+  --uk-accent: #D4AF37;
+  --uk-accent-light: #F1E5AC;
+  --uk-bg-light: #F8FAFB;
+  --uk-white: #FFFFFF;
+  --uk-text: #2D3748;
+  --uk-text-muted: #718096;
+  --uk-border: #E2E8F0;
+  --uk-shadow-sm: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+  --uk-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+  --uk-transition: all 0.3s ease;
+}
+
+.uk-body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--uk-text);
+  background-color: var(--uk-white);
+  line-height: 1.6;
+}
+
+.uk-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.uk-btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--uk-transition);
+  border: none;
+}
+
+.uk-btn-primary {
+  background-color: var(--uk-primary);
+  color: var(--uk-white);
+}
+
+.uk-btn-primary:hover {
+  background-color: var(--uk-primary-dark);
+  transform: translateY(-2px);
+}
+
+.uk-btn-accent {
+  background-color: var(--uk-accent);
+  color: var(--uk-primary);
+}
+
+.uk-btn-accent:hover {
+  background-color: #bfa030;
+  color: var(--uk-white);
+}
+
+.uk-section {
+  padding: 5rem 0;
+}
+
+.uk-section-alt {
+  background-color: var(--uk-bg-light);
+}
+
+.uk-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  color: var(--uk-primary);
+}
+
+.uk-subtitle {
+  font-size: 1.25rem;
+  color: var(--uk-text-muted);
+  margin-bottom: 2rem;
+}
+
+.uk-card {
+  background: var(--uk-white);
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: var(--uk-shadow-md);
+  transition: var(--uk-transition);
+}
+
+.uk-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Navbar */
+.uk-navbar {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--uk-white);
+  border-bottom: 1px solid var(--uk-border);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.uk-nav-links {
+  display: flex;
+  gap: 2rem;
+}
+
+.uk-nav-link {
+  text-decoration: none;
+  color: var(--uk-primary);
+  font-weight: 600;
+  position: relative;
+}
+
+.uk-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--uk-accent);
+  transition: var(--uk-transition);
+}
+
+.uk-nav-link:hover::after {
+  width: 100%;
+}
+
+/* Hero */
+.uk-hero {
+  position: relative;
+  height: 600px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: var(--uk-white);
+}
+
+.uk-hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(0,43,91,0.9) 0%, rgba(0,43,91,0.4) 100%);
+  z-index: 1;
+}
+
+.uk-hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.uk-hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 600px;
+}
+
+/* Grid */
+.uk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+/* Captcha */
+.uk-captcha {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--uk-bg-light);
+  border-radius: 4px;
+  border: 1px solid var(--uk-border);
+}
+
+.uk-captcha-code {
+  background: var(--uk-primary);
+  color: var(--uk-white);
+  padding: 0.5rem 1rem;
+  font-family: monospace;
+  font-size: 1.5rem;
+  font-weight: bold;
+  letter-spacing: 3px;
+  user-select: none;
+  border-radius: 2px;
+}
+
+/* Footer */
+.uk-footer {
+  background-color: var(--uk-primary);
+  color: var(--uk-white);
+  padding: 4rem 0 2rem;
+}
+
+.uk-footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+.uk-footer-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--uk-accent);
+}
+
+.uk-footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.6);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .uk-title { font-size: 2rem; }
+  .uk-hero { height: 400px; }
+  .uk-nav-links { display: none; }
+}

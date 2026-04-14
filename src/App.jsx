@@ -5,7 +5,6 @@ import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
 import ReportsPage from './pages/ReportsPage';
 import AdminPage from './pages/AdminPage';
-
 const AuthGuard = ({ children }) => {
   const { currentUser, loading } = useAppContext();
   
